@@ -62,9 +62,11 @@ int main(int argc, char** argv) {
             /* TODO: Make customizable, do not hard-code `bash' */
             execl("/bin/bash", "/bin/bash", NULL);
         } else if (-1 == pid) {
+            close(client_socket_fd);
             fprintf(stderr, "WARNING: Can't fork to new terminal (%s)\n", strerror(errno));
             continue;
         } else {
+            close(client_socket_fd);
             fprintf(stdout, "New connection from %s, process PID: %d\n", inet_ntoa(client_addr.sin_addr), pid);
         }
 
