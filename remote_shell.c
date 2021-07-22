@@ -3,12 +3,27 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #define DEFAULT_SHELL "/bin/sh"
+
+
+static void sigchld_handler(int signal) {
+    int saved_errno;
+    pid_t child_pid;
+
+    saved_errno = errno;
+
+    while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0)
+        continue;
+
+    errno = saved_errno;
+}
 
 
 int main(int argc, char** argv) {
@@ -19,8 +34,18 @@ int main(int argc, char** argv) {
 
     char* cmd_shell = NULL;
 
-    memset(&server_addr, 0, sizeof(struct sockaddr_in));
+    struct sigaction sa;
 
+    /* Prepare SIGCHLD handler */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = sigchld_handler;
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        fprintf(stderr, "ERROR: Can't init handler for SIGCHLD (%s)\n", strerror(errno));
+        return -1;
+    }
+
+    memset(&server_addr, 0, sizeof(struct sockaddr_in));
     server_socket_fd = socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, IPPROTO_TCP);
     if (-1 == server_socket_fd) {
         fprintf(stderr, "ERROR: Can't open socket (%s)\n", strerror(errno));
@@ -30,7 +55,6 @@ int main(int argc, char** argv) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(4470); /* FIXME: Get port from cmdline */
-
     if (bind(server_socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr))) {
         fprintf(stderr, "ERROR: Can't bind address (%s)\n", strerror(errno));
         return -1;
@@ -54,7 +78,18 @@ int main(int argc, char** argv) {
 
         client_socket_fd = accept(server_socket_fd, (struct sockaddr*)&client_addr, &client_addr_size);
         if (-1 == client_socket_fd) {
-            fprintf(stderr, "WARNING: Can't apply accept for new connection (%s)\n", strerror(errno));
+            switch (errno) {
+                case EINTR:
+                    /* Can occur if client disconnected while we are
+                     * waiting another clients in accept()
+                     */
+                    break;
+
+                default:
+                    fprintf(stderr, "WARNING: Can't accept new connection (%s)\n", strerror(errno));
+                    break;
+            }
+
             continue;
         }
 
