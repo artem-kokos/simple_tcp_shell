@@ -1,10 +1,14 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
+#include <errno.h>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
+#include <sys/socket.h>
+
+#define DEFAULT_SHELL "/bin/sh"
 
 
 int main(int argc, char** argv) {
@@ -12,6 +16,8 @@ int main(int argc, char** argv) {
     /* TODO: Daemonize it */
     int server_socket_fd;
     struct sockaddr_in server_addr;
+
+    char* cmd_shell = NULL;
 
     memset(&server_addr, 0, sizeof(struct sockaddr_in));
 
@@ -34,6 +40,10 @@ int main(int argc, char** argv) {
         fprintf(stderr, "ERROR: Can't start listening (%s)\n", strerror(errno));
         return -1;
     }
+
+    cmd_shell = getenv("SHELL");
+    if (!cmd_shell)
+        cmd_shell = DEFAULT_SHELL;
 
     /* TODO: Make it interruptible, don't use while(1) */
     while (1) {
@@ -59,8 +69,7 @@ int main(int argc, char** argv) {
             dup2(client_socket_fd, STDOUT_FILENO);
             dup2(client_socket_fd, STDERR_FILENO);
 
-            /* TODO: Make customizable, do not hard-code `bash' */
-            execl("/bin/bash", "/bin/bash", NULL);
+            execl(cmd_shell, cmd_shell, NULL);
         } else if (-1 == pid) {
             close(client_socket_fd);
             fprintf(stderr, "WARNING: Can't fork to new terminal (%s)\n", strerror(errno));
