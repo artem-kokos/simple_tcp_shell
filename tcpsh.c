@@ -26,8 +26,6 @@ static void sigchld_handler(int signal) {
 
 
 int main(int argc, char** argv) {
-    /* TODO: Parse cmdline */
-    /* TODO: Daemonize it */
     int server_socket_fd;
     struct sockaddr_in server_addr;
 
@@ -68,9 +66,7 @@ int main(int argc, char** argv) {
     if (!cmd_shell)
         cmd_shell = DEFAULT_SHELL;
 
-    /* TODO: Make it interruptible, don't use while(1) */
     while (1) {
-        /* TODO: Save client IP address here to display it later */
         int client_socket_fd;
         struct sockaddr_in client_addr;
         socklen_t client_addr_size = sizeof(struct sockaddr_in);
@@ -105,7 +101,6 @@ int main(int argc, char** argv) {
             fprintf(stdout, "New connection from %s, process PID: %d\n", inet_ntoa(client_addr.sin_addr), pid);
         }
     }
-    /* TODO: Close all on exit */
 
     close(server_socket_fd);
     return 0;
