@@ -15,11 +15,10 @@
 
 static void sigchld_handler(int signal) {
     int saved_errno;
-    pid_t child_pid;
 
     saved_errno = errno;
 
-    while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0)
+    while (waitpid(-1, NULL, WNOHANG) > 0)
         continue;
 
     errno = saved_errno;
