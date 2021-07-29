@@ -10,7 +10,11 @@ $ gcc tcpsh.c -o tcpsh
 ```
 $ ./tcpsh
 ```
-It starts up on 4470 port. Now new connections can be established, for instance, with netcat:
+It starts up on 4470 port by default. Now new connections can be established, for instance, with netcat:
 ```
 $ nc <IP addr> 4470
+```
+Also, port can be specified as cmdline parameter:
+```
+$ ./tcpsh 24680
 ```
