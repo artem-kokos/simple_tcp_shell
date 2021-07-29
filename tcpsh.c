@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include <ctype.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -11,6 +12,7 @@
 #include <sys/wait.h>
 
 #define DEFAULT_SHELL "/bin/sh"
+#define DEFAULT_PORT 4470
 
 
 static void sigchld_handler(int signal) {
@@ -25,13 +27,39 @@ static void sigchld_handler(int signal) {
 }
 
 
+static int get_port(const char* port_string) {
+    /* atoi() not best approach, because the
+     * string which starts with digit (`d') and ends
+     * with character (`c') is valid for the function.
+     * There is no issues, it works good
+     * just not beautiful in case of `dddc' or
+     * something like this.
+     */
+    int port = atoi(port_string);
+
+    if (port < 1 || port > 65535)
+        return -1;
+    return port;
+}
+
+
 int main(int argc, char** argv) {
     int server_socket_fd;
     struct sockaddr_in server_addr;
 
     char* cmd_shell = NULL;
+    int server_port = DEFAULT_PORT;
 
     struct sigaction sa;
+
+    if (argc > 1) {
+        server_port = get_port(argv[1]);
+
+        if (server_port == -1) {
+            fprintf(stderr, "ERROR: Wrong port specified\n");
+            return -1;
+        }
+    }
 
     /* Prepare SIGCHLD handler */
     sigemptyset(&sa.sa_mask);
@@ -51,7 +79,7 @@ int main(int argc, char** argv) {
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(4470); /* FIXME: Get port from cmdline */
+    server_addr.sin_port = htons(server_port);
     if (bind(server_socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr))) {
         fprintf(stderr, "ERROR: Can't bind address (%s)\n", strerror(errno));
         return -1;
